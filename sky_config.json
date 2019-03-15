@@ -1,0 +1,7 @@
+{
+  "path": "skydata/J123959.00-113722.0-u.fits",
+  "image_scaling": "LogStretch",
+  "image_contrast": 0.5499999999999998,
+  "max_saturation": 1.5,
+  "power_normalise": 3.7
+}
