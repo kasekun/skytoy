@@ -1,0 +1,102 @@
+This program uses Tkinter windows with embedded matplotlib displays. Tkinter facilitates interaction and matplotlib the visualisation.
+It is designed to be fully modular (though currently relying on copy-pasting, it could certainly be made simpler)
+
+=Heirarchy
+skytoy (package) -> skypages.py (script) -> SkyToyClass (Parent Class) -> UPage, GPage, ... (Children Classes)
+
+No modification of SkyToyClass should be necessary to add your own image.
+Each tkinter `page` contains a button to link to every other page, as well as the image reading and manipulation for that page
+If creating a new page, ensure you add a button to access that page inside every other page,
+for example if you create an x-ray page you would need to add the following to the class for every page.
+``` lang=python, name=page buttons
+        button_xray = ttk.Button(self, text="x-ray image",
+                             command=lambda: controller.show_frame(XRayPage))
+        button_xray.pack()
+```
+continuing with this example, you would also need to add a new page class `XRayPage` (which appears in the button declaration above)
+You can easily copy and modify an existing class for this, like so:
+
+``` lang=python, lines=12, name=page class
+class XRayPage(tk.Frame):
+    """
+    Page for i-band photometry
+    """
+
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        label = tk.Label(self, text="XRay image", font=LARGE_FONT)
+        label.pack(pady=10,padx=10)
+
+        button = ttk.Button(self, text="optical g", command=lambda: controller.show_frame(GPage))
+        button.pack()
+        button2 = ttk.Button(self, text="optical r", command=lambda: controller.show_frame(RPage))
+        button2.pack()
+        button3 = ttk.Button(self, text="optical u", command=lambda: controller.show_frame(UPage))
+        button3.pack()
+        button4 = ttk.Button(self, text="optical u", command=lambda: controller.show_frame(UPage))
+        button4.pack()
+
+        f = Figure(figsize=(8, 6))
+        a = f.add_subplot(111)
+        f.subplots_adjust(left=0, bottom=0.005, right=1, top=1)
+        a.get_xaxis().set_visible(False)
+        a.get_yaxis().set_visible(False)
+
+        # add axes for sliders
+        ax_norma = f.add_axes([0.81, 0.1, 0.15, 0.025])
+        ax_contr = f.add_axes([0.81, 0.05, 0.15, 0.025])
+
+        # open and read your data here
+        hdu_list = fits.open(sky_image)
+        hdu_list.info()
+        img = hdu_list[0].data
+
+        # adjust the image scaling here
+        contrast = image_contrast
+        interval = ZScaleInterval(contrast=contrast)
+        vmin, vmax = interval.get_limits(img)
+
+        # mathematical scaling choice (more available in astropy.visualisation)
+        stretch_options = {'LogStretch': LogStretch(power_normalise),
+                           'PowerStretch': PowerStretch(power_normalise), }
+
+        norm = ImageNormalize(vmin=vmin, vmax=vmax, stretch=stretch_options[image_scaling])
+
+        # display image
+        a.imshow(img, origin='lower', norm=norm, cmap='cividis')
+
+        # Embedding In Tk
+        canvas = FigureCanvasTkAgg(f, self)
+        canvas.draw()
+        canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+        # Show ToolBar
+        toolbar = NavigationToolbar(canvas, self)
+        toolbar.update()
+        # Activate Zoom
+        toolbar.zoom(self)
+        canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+        # add sliders
+        s_norma = Slider(ax_norma, 'Normalise', 0.1, 5.0, valinit=power_normalise, valstep=0.1)
+        s_contr = Slider(ax_contr, 'Contrast', 0.1, 1.0, valinit=contrast)
+
+        def update(val): # this funcation updates the image as you move the slider
+            n_norma = s_norma.val
+            n_contr = s_contr.val
+            # assign new values to contrast and normalise
+            interval = ZScaleInterval(contrast=n_contr)
+            vmin, vmax = interval.get_limits(img)
+            norm = ImageNormalize(vmin=vmin, vmax=vmax, stretch=PowerStretch(n_norma))
+            a.imshow(img, origin='lower', norm=norm, cmap='cividis')
+            # saving data to json file
+            SaveJson(n_norma, n_contr)
+            canvas.draw_idle()
+
+        s_norma.on_changed(update)
+        s_contr.on_changed(update)
+
+        hdu_list.close() # close your image data-source once displayed
+```
+
+That's it!
