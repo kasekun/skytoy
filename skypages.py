@@ -38,6 +38,7 @@ TODO: Relocate contrast and normalisation sliders
 TODO: Add additional normalisation options (currently 'LogNorm', 'Powernorm')
 TODO: Make selection of normalisation a button toggle within tkinter frames
 TODO: Add colourmap options to config (rather than 'cividis' default)
+TODO: Make modular classes less reliant on copy-paste
 """
 
 
